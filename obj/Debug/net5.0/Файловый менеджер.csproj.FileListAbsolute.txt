@@ -1,0 +1,32 @@
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.exe
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.deps.json
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.runtimeconfig.json
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.runtimeconfig.dev.json
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.dll
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\bin\Debug\net5.0\ref\Файловый менеджер.dll
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.pdb
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.csproj.AssemblyReference.cache
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.AssemblyInfoInputs.cache
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.AssemblyInfo.cs
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.csproj.CoreCompileInputs.cache
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.dll
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\ref\Файловый менеджер.dll
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.pdb
+C:\Users\tanya\OneDrive\Рабочий стол\C#\Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.genruntimeconfig.cache
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.exe
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.deps.json
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.runtimeconfig.json
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.runtimeconfig.dev.json
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.dll
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\bin\Debug\net5.0\ref\Файловый менеджер.dll
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\bin\Debug\net5.0\Файловый менеджер.pdb
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.csproj.AssemblyReference.cache
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.AssemblyInfoInputs.cache
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.AssemblyInfo.cs
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.csproj.CoreCompileInputs.cache
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.dll
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\ref\Файловый менеджер.dll
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.pdb
+C:\Users\tanya\OneDrive\Рабочий стол\C#\.Пиры и лабы\3) Файловый менеджер\obj\Debug\net5.0\Файловый менеджер.genruntimeconfig.cache

@@ -1,0 +1,1413 @@
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+// Написано на винде, если что.
+ 
+
+// Моя прога не может нормально работать с файлами и папками, название которых превышает 120 символов.
+// Можно было это пофиксить, но я надеюсь на то, что люди так файлы не называют...
+// Если же вам необходимо работать с такими файлами, просьба делать консоль больше размером
+
+static class Program
+{
+    // Можешь поменять цвета, если тебе не нравится, но ни в коем случае не выбирай белый.
+
+    // Цвет папок и всплывающих окон
+    public static ConsoleColor color1 = ConsoleColor.Magenta;
+
+    // Цвет файлов и заголовков
+    public static ConsoleColor color2 = ConsoleColor.Blue;
+
+    // Цвет сообщений о том, что операция прошла успешно
+    public static ConsoleColor goodColor = ConsoleColor.Green;
+
+    // Цвет сообщений об ошибке
+    public static ConsoleColor badColor = ConsoleColor.Red;
+
+    // Показатель глубины директории, в которой мы сейчас находимся. 0 - это диски.
+    public static int count = 0;
+
+    // Показать ли полные пути файлов? Пока не стоит.
+    public static bool showDir = false;
+    /// <summary>
+    /// Пишет подсказочку и запускает Start()
+    /// </summary>
+    static void Main()
+    {
+        string offset = "";
+        for (int i = 0; i < Console.WindowWidth / 2 - 33; i++)
+        {
+            offset += " ";
+        }
+        Console.ForegroundColor = color1;
+        Console.SetCursorPosition(0, 20);
+        Console.WriteLine(offset + "┌──────────────────────────────────────────────────────────────────┐");
+        Console.WriteLine(offset + "│       Подсказка: если нужна помощь в управлении, нажмите i       │");
+        Console.WriteLine(offset + "└──────────────────────────────────────────────────────────────────┘");
+        Start();
+    }
+
+    /// <summary>
+    /// Показывает анимацию загрузки, по окончании список дисков компьютера
+    /// </summary>
+    static void Start()
+    {
+        Console.ForegroundColor = ConsoleColor.White;
+        string title1 = "Ваш файлов";
+        string title2 = "й менеджер";
+        string str = "ы";
+        Console.SetCursorPosition(Console.WindowWidth / 2, 6);
+        Console.WriteLine(str);
+        Thread.Sleep(100);
+        for (int i = 0; i < title1.Length; i++)
+        {
+            str = title1[title1.Length - 1 - i] + str + title2[i];
+            Console.SetCursorPosition(Console.WindowWidth / 2 - str.Length / 2, 6);
+            Console.WriteLine(str);
+            Thread.Sleep(100);
+        }
+        // Координаты точек сердечка
+        int[,] offsets = { { 0, 4 }, { 2, 3 }, { 4, 2 }, { 6, 2 }, { 8, 2 }, { 10, 3 }, { 11, 4 }, { 12, 5 }, { 12, 6 }, { 11, 7 }, { 9, 8 }, { 7, 9 }, { 4, 10 }, { 2, 11 }, { 0, 12 } };
+
+        for (int i = 0; i < offsets.GetLength(0); i++)
+        {
+            Console.SetCursorPosition(Console.WindowWidth / 2 + offsets[i, 0], offsets[i, 1]);
+            Console.WriteLine("*");
+            Thread.Sleep(100);
+        }
+
+        for (int i = offsets.GetLength(0) - 2; i >= 1; i -= 1)
+        {
+            Console.SetCursorPosition(Console.WindowWidth / 2 - offsets[i, 0], offsets[i, 1]);
+            Console.WriteLine("*");
+            Thread.Sleep(100);
+        }
+        Thread.Sleep(400);
+        Disks();
+    }
+    /// <summary>
+    /// Показывает окошко с биндами (то есть чо какие кнопки делают).
+    /// Если нажать Backspace, возвращает на место, откуда был вызван.
+    /// </summary>
+    /// <param name="currentFolder"> Папка, из которой было вызвано окошко. В неё и возвращаемся. </param>
+    static void Info(string currentFolder)
+    {
+        Console.Clear();
+        Console.ForegroundColor = color1;
+        Console.WriteLine(" ┌───────────────┬───────────┐");
+        Console.WriteLine(" │    Листать    │   ↑ / ↓   │");
+        Console.WriteLine(" ├───────────────┼───────────┤");
+        Console.WriteLine(" │    Выбрать    │   Enter   │");
+        Console.WriteLine(" ├───────────────┼───────────┤");
+        Console.WriteLine(" │     Назад     │   [<<]    │");
+        Console.WriteLine(" ├───────────────┼───────────┤");
+        Console.WriteLine(" │ Показать пути │    Tab    │");
+        Console.WriteLine(" ├───────────────┼───────────┤");
+        Console.WriteLine(" │ Создать файл  │     F     │");
+        Console.WriteLine(" ├───────────────┼───────────┤");
+        Console.WriteLine(" │     Выйти     │   Escape  │");
+        Console.WriteLine(" ├───────────────┼───────────┤");
+        Console.WriteLine(" │ Закрыть окно  │ Backspace │");
+        Console.WriteLine(" └───────────────┴───────────┘");
+        Console.WriteLine(" *Вы можете создать файл, находясь в директории, в которой хотите его создать.");
+        Console.SetCursorPosition(0, 0);
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.Backspace:
+                    if (count == 0)
+                    {
+                        Disks();
+                    }
+                    else
+                    {
+                        Files(currentFolder);
+                    }
+                    break;
+                case ConsoleKey.Escape:
+                    if (QuitWarning())
+                    {
+                        Quit();
+                    }
+                    else
+                    {
+                        Info(currentFolder);
+                    }
+                    break;
+            }
+            // Если пользователь не очень умён и начнёт тыкать ненужные кнопки, мы их замажем пробелом.
+            Console.SetCursorPosition(0, 0);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, 0);
+        }
+    }
+    /// <summary>
+    /// Выводит окошко, чтобы удостовериться, точно ли человек хочет закрыть программу.
+    /// </summary>
+    /// <returns><c>true</c>, если хочет,
+    /// иначе <c>false</c>.</returns>
+    static bool QuitWarning()
+    {
+        Console.Clear();
+        string offset = "";
+        for (int i = 0; i < Console.WindowWidth / 2 - 19; i++)
+        {
+            offset += " ";
+        }
+        Console.ForegroundColor = color1;
+        // Лично у меня почему-то именно кнопка Esc съедала первый символ и все предшествующие пробелы, потому написано так.
+        Console.SetCursorPosition(offset.Length, 10);
+        Console.WriteLine("┌┌───────────────────────────────────┐");
+        Console.WriteLine(offset + "│  Вы уверены, что хотите выйти? :( │");
+        Console.WriteLine(offset + "│                                   │");
+        Console.WriteLine(offset + "│  Ладно, остаюсь       Увы, да...  │");
+        Console.WriteLine(offset + "│     Backspace           Enter     │");
+        Console.WriteLine(offset + "└───────────────────────────────────┘");
+        Console.SetCursorPosition(0, 0);
+
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.Backspace:
+                    return false;
+                case ConsoleKey.Enter:
+                    return true;
+            }
+            Console.SetCursorPosition(0, 0);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, 0);
+        }
+    }
+    /// <summary>
+    /// Выводит прощальное письмо и закрывает программу, а системные штучки скрывает, сделав шрифт чёрным.
+    /// </summary>
+    static void Quit()
+    {
+        Console.Clear();
+        string offset = new string(' ', Console.WindowWidth / 2 - 26);
+        Console.ForegroundColor = color2;
+        Console.SetCursorPosition(0, 10);
+        Console.WriteLine(offset + "┌─────────────────────────────────────────────────────┐");
+        Console.WriteLine(offset + "│ ┌─────────────────────────────────────────────────┐ │");
+        Console.WriteLine(offset + "│ │                                                 │ │");
+        Console.WriteLine(offset + "│ │                  Счастливого пути!              │ │");
+        Console.WriteLine(offset + "│ │  Нажмите любую клавишу, чтобы закрыть это окно  │ │");
+        Console.WriteLine(offset + "│ │                                                 │ │");
+        Console.WriteLine(offset + "│ └─────────────────────────────────────────────────┘ │");
+        Console.WriteLine(offset + "└─────────────────────────────────────────────────────┘");
+        Console.ForegroundColor = ConsoleColor.Black;
+        Environment.Exit(0);
+    }
+    /// <summary>
+    /// Вывод списка дисков и выбор диска путём использования стрелочек и Enter
+    /// </summary>
+    static void Disks()
+    {
+        Console.Clear();
+        Console.SetCursorPosition(0, 0);
+        DriveInfo[] allDrives = DriveInfo.GetDrives();
+        Console.ForegroundColor = color2;
+        string hint = "Выберите диск.";
+        Console.SetCursorPosition(Console.WindowWidth / 2 - hint.Length/2, 0);
+        Console.WriteLine(hint);
+
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(" " + allDrives[0]);
+        Console.ForegroundColor = color1;
+        for (int i = 1; i < allDrives.Length; i++)
+        {
+            Console.WriteLine(" " + allDrives[i].Name);
+        }
+        int diskNumber = 1;
+        Console.SetCursorPosition(0, diskNumber);
+
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.DownArrow:
+                    if (diskNumber < allDrives.Length)
+                    {
+                        Console.SetCursorPosition(0, diskNumber);
+                        Console.ForegroundColor = color1;
+                        Console.WriteLine(" " + allDrives[diskNumber - 1].Name);
+                        diskNumber += 1;
+                        Console.SetCursorPosition(0, diskNumber);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(" " + allDrives[diskNumber - 1].Name);
+                    }
+                    break;
+                case ConsoleKey.UpArrow:
+                    if (diskNumber > 1)
+                    {
+                        Console.SetCursorPosition(0, diskNumber);
+                        Console.ForegroundColor = color1;
+                        Console.WriteLine(" " + allDrives[diskNumber - 1].Name);
+                        diskNumber -= 1;
+                        Console.SetCursorPosition(0, diskNumber);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(" " + allDrives[diskNumber - 1].Name);
+                    }
+                    break;
+                case ConsoleKey.Enter:
+                    count += 1;
+                    Console.ForegroundColor = color1;
+                    Files(allDrives[diskNumber-1].Name);
+                    break;
+                case ConsoleKey.I:
+                    Info(null);
+                    break;
+                case ConsoleKey.Escape:
+                    if (QuitWarning())
+                    {
+                        Quit();
+                    }
+                    else
+                    {
+                        Disks();
+                    }
+                    break;
+            }
+            Console.SetCursorPosition(0, diskNumber);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, diskNumber);
+        }
+    }
+    /// <summary>
+    /// Вывод списка файлов и папок в директории
+    /// </summary>
+    /// <param name="folder">Текущая директория</param>
+    static void Files(string folder)
+    {
+        Console.Clear();
+        var di = new DirectoryInfo(folder);
+        var items = di.GetFileSystemInfos()
+            // Убираем системные ненужные файлы
+            .Where(f => !f.Name.StartsWith("."))
+            // Убираем системные скрытые файлы, совсем ненужные
+            .Where(f => !f.IsHidden()) 
+            // Сортируем по имени
+            .OrderBy(f => f.Name)
+            // Делаем из этого дела список
+            .ToList();
+
+        int cursor = 0;
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(" [<<]");
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            WriteColored(items[i]);
+        }
+        Console.SetCursorPosition(0, 0);
+
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.DownArrow:
+                    if (items.Count > 0)
+                    {
+                        if (cursor == 0)
+                        {
+                            Console.SetCursorPosition(0, cursor);
+                            Console.ForegroundColor = color2;
+                            Console.WriteLine(" [<<]");
+                            cursor += 1;
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(" {0}", showDir ? items[cursor - 1].FullName : items[cursor - 1].Name);
+                        }
+                        else if (cursor < items.Count)
+                        {
+                            Console.SetCursorPosition(0, cursor);
+                            WriteColored(items[cursor - 1]);
+                            cursor += 1;
+                            Console.SetCursorPosition(0, cursor);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(" {0}", showDir ? items[cursor - 1].FullName : items[cursor - 1].Name);
+                        }
+                    }
+                    break;
+                case ConsoleKey.UpArrow:
+                    if (items.Count > 0)
+                    {
+                        if (cursor == 1)
+                        {
+                            Console.SetCursorPosition(0, cursor);
+                            WriteColored(items[cursor - 1]);
+                            cursor = 0;
+                            Console.SetCursorPosition(0, cursor);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(" [<<]");
+                        }
+                        else if (cursor > 0)
+                        {
+                            Console.SetCursorPosition(0, cursor);
+                            WriteColored(items[cursor - 1]);
+                            cursor -= 1;
+                            Console.SetCursorPosition(0, cursor);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(" {0}", showDir ? items[cursor - 1].FullName : items[cursor - 1].Name);
+                        }
+                    }
+                    break;
+                case ConsoleKey.Enter:
+                    if (cursor == 0)
+                    {
+                        count -= 1;
+                        if (count == 0)
+                        {
+                            Disks();
+                        }
+                        else
+                        {
+                            Files(Directory.GetParent(folder).FullName);
+                        }
+                    }
+                    else
+                    {
+                        if (items[cursor - 1].IsDirectory())
+                        {
+                            count += 1;
+                            Files(items[cursor - 1].FullName);
+                        }
+                        else
+                        {
+                            FileActions(items[cursor - 1].FullName);
+                        }
+                    }
+                    break;
+                case ConsoleKey.Tab:
+                    showDir = !showDir;
+                    Files(folder);
+                    break;
+                case ConsoleKey.F:
+                    ChooseEncoding(folder, "create");
+                    break;
+                case ConsoleKey.I:
+                    Info(folder);
+                    break;
+                case ConsoleKey.Escape:
+                    if (QuitWarning())
+                    {
+                        Quit();
+                    }
+                    else
+                    {
+                        Files(folder);
+                    }
+                    break;
+            }
+            Console.SetCursorPosition(0, cursor);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, cursor);
+        }
+
+    }
+    /// <summary>
+    /// Выделяет директории одним цветом, а файлы другим.
+    /// </summary>
+    /// <param name="item">Выбранный файл или папка</param>
+    static void WriteColored(this FileSystemInfo item)
+    {
+        if (!item.IsDirectory())
+        {
+            Console.ForegroundColor = color2;
+        }
+        else
+        {
+            Console.ForegroundColor = color1;
+        }
+        Console.WriteLine(" {0}", showDir ? item.FullName : item.Name);
+    }
+    /// <summary>
+    /// Проверяет, является ли выбранный элемент директории папкой.
+    /// </summary>
+    /// <param name="item">Выбранный элемент директории</param>
+    /// <returns>true, если да, иначе false.</returns>
+    public static bool IsDirectory(this FileSystemInfo item)
+    {
+        return (item.Attributes & FileAttributes.Directory) == FileAttributes.Directory;
+    }
+    /// <summary>
+    /// Проверяет, является ли элемент директории скрытым. Ну знаете, системные всякие штуки.
+    /// </summary>
+    /// <param name="item">Элемент директории</param>
+    /// <returns>true, если да, иначе понято что.</returns>
+    public static bool IsHidden(this FileSystemInfo item)
+    {
+        return (item.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden;
+    }
+    /// <summary>
+    /// Создаёт текстовый файл с заданным пользователем названием и начальным текстом.
+    /// </summary>
+    /// <param name="folder">Папка, где будет создаваться файл</param>
+    /// <param name="encod">Кодировка файла</param>
+    static void FileCreate(string folder, string encod)
+    {
+        Console.Clear();
+        Console.ForegroundColor = color2;
+        string title = "Создание файла";
+        Console.SetCursorPosition(Console.WindowWidth / 2 - title.Length / 2, 0);
+        Console.WriteLine(title);
+
+        Console.ForegroundColor = color1;
+        Console.WriteLine("Как назовём новобранца? Напишите имя и нажмите Enter.");
+        Console.WriteLine("Если в папке окажется файл с таким именем, он будет перезаписан");
+        Console.ForegroundColor = ConsoleColor.White;
+        string fileName = Console.ReadLine();
+
+        string filePath = folder + "\\" + fileName + ".txt";
+
+        Console.ForegroundColor = color1;
+        Console.WriteLine("Можете что-то записать в новый файл при желании, даже несколько строк.");
+        Console.WriteLine("Чтобы закончить, введите \"-*-\" с новой строки.");
+        Console.ForegroundColor = ConsoleColor.White;
+
+        using (StreamWriter stream = new(filePath))
+        {
+            while (true)
+            {
+                string str = Console.ReadLine();
+                if (str == "-*-")
+                {
+                    break;
+                }
+                else
+                {
+                    stream.WriteLine(str, Encoding.GetEncoding(encod));
+                }
+            }
+            stream.Close();
+        }
+        string offset = "";
+        for (int i = 0; i < Console.WindowWidth / 2 - 13; i++)
+        {
+            offset += " ";
+        }
+        Console.Clear();
+        Console.SetCursorPosition(0, 10);
+        Console.ForegroundColor = goodColor;
+        Console.WriteLine(offset + "┌──────────────────────────┐");
+        Console.WriteLine(offset + "│                          │");
+        Console.WriteLine(offset + "│  Файл успешно создан :)  │");
+        Console.WriteLine(offset + "│                          │");
+        Console.WriteLine(offset + "└──────────────────────────┘");
+        Console.SetCursorPosition(0, 0);
+        Thread.Sleep(2500);
+        Files(folder);
+    }
+    /// <summary>
+    /// Выводит действия над файлами и даёт нам выбрать одно из них.
+    /// </summary>
+    /// <param name="file">Выбранный файл</param>
+    static void FileActions(string file)
+    {
+        Console.Clear();
+        Console.ForegroundColor = color2;
+        string title = "Выберите действие над файлом \"" + Path.GetFileName(file) + "\"";
+        Console.SetCursorPosition(Console.WindowWidth / 2 - title.Length / 2, 0);
+        Console.WriteLine(title);
+        string[] actions = { " [<<]", " Создать копию", " Переместить", " Удалить", " Переименовать", " Вывести содержимое в указанной кодировке", 
+            " Конкатенировать текстовые файлы и вывести в кодировке UTF-8", " Вывести все файлы в этой папке с таким же расширением" };
+
+        int cursor = 0;
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(actions[0]);
+        Console.ForegroundColor = color1;
+        for (int i = 1; i < actions.Length; i++)
+        {
+            Console.WriteLine(actions[i]);
+        }
+        Console.SetCursorPosition(0, cursor + 1);
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.DownArrow:
+                    if (cursor < actions.Length - 1)
+                    {
+                        Console.SetCursorPosition(0, cursor + 1);
+                        if (cursor == 0)
+                        {
+                            Console.ForegroundColor = color2;
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = color1;
+                        }
+                        Console.WriteLine(actions[cursor]);
+                        cursor += 1;
+                        Console.SetCursorPosition(0, cursor + 1);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(actions[cursor]);
+                    }
+                    break;
+                case ConsoleKey.UpArrow:
+                    if (cursor > 0)
+                    {
+                        Console.SetCursorPosition(0, cursor + 1);
+                        Console.ForegroundColor = color1;
+                        Console.WriteLine(actions[cursor]);
+                        cursor -= 1;
+                        Console.SetCursorPosition(0, cursor + 1);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(actions[cursor]);
+                    }
+                    break;
+                case ConsoleKey.Enter:
+                    switch (cursor)
+                    {
+                        case 0:
+                            Files(Directory.GetParent(file).FullName);
+                            break;
+                        case 1:
+                            CopyFile(file);
+                            break;
+                        case 2:
+                            MoveFileWarning(file);
+                            break;
+                        case 3:
+                            DeleteFileWarning(file);
+                            break;
+                        case 4:
+                            RenameFile(file);
+                            break;
+                        case 5:
+                            ChooseEncoding(file, "read");
+                            break;
+                        case 6:
+                            FilesUniteWarning(file);
+                            break;
+                        case 7:
+                            SameExOutput(file);
+                            break;
+                    }
+                    break;
+                case ConsoleKey.Escape:
+                    if (QuitWarning())
+                    {
+                        Quit();
+                    }
+                    else
+                    {
+                        FileActions(file);
+                    }
+                    break;
+            }
+            Console.SetCursorPosition(0, cursor + 1);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, cursor + 1);
+        }
+    }
+
+    /// <summary>
+    /// Копирование файла в ту же папку.
+    /// </summary>
+    /// <param name="path">Путь до файла</param>
+    static void CopyFile(string path)
+    {
+        Console.Clear();
+        Console.SetCursorPosition(0, 10);
+        try
+        {
+            int num = 1;
+            while (true)
+            {
+                string newPath = Directory.GetParent(path) + "\\" + Path.GetFileNameWithoutExtension(path) + " (" + num.ToString() + ")" + Path.GetExtension(path);
+                if (File.Exists(newPath))
+                {
+                    num += 1;
+                }
+                else
+                {
+                    File.Copy(path, newPath);
+                    break;
+                }
+            }
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 15; i++)
+            {
+                offset += " ";
+            }
+            Console.ForegroundColor = goodColor;
+            Console.WriteLine(offset + "┌─────────────────────────────┐");
+            Console.WriteLine(offset + "│                             │");
+            Console.WriteLine(offset + "│  Файл успешно копирован :)  │");
+            Console.WriteLine(offset + "│                             │");
+            Console.WriteLine(offset + "└─────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(2500);
+            Files(Directory.GetParent(path).FullName);
+        }
+        catch
+        {
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 18; i++)
+            {
+                offset += " ";
+            }
+            Console.ForegroundColor = badColor;
+            Console.WriteLine(offset + "┌──────────────────────────────────┐");
+            Console.WriteLine(offset + "│  Не удалось копировать файл :(   │");
+            Console.WriteLine(offset + "│     Возможно, дело в доступе     │");
+            Console.WriteLine(offset + "│      к папке с этим файлом       │");
+            Console.WriteLine(offset + "└──────────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(3500);
+            FileActions(path);
+        }
+
+    }
+    /// <summary>
+    /// Двигаем файл в другую папку, которую мы до этого выбрали в ChoosingFolderToMove(string, string);
+    /// </summary>
+    /// <param name="path">Путь до старого файла</param>
+    /// <param name="newPath">Путь до нового файла</param>
+    static void MoveFile(string path, string newPath)
+    {
+        try
+        {
+            File.Move(path, newPath + @"\" + Path.GetFileName(path), true);
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 15; i++)
+            {
+                offset += " ";
+            }
+            Console.Clear();
+            Console.SetCursorPosition(0, 10);
+            Console.ForegroundColor = goodColor;
+            Console.WriteLine(offset + "┌─────────────────────────────┐");
+            Console.WriteLine(offset + "│                             │");
+            Console.WriteLine(offset + "│  Файл успешно перемещён :)  │");
+            Console.WriteLine(offset + "│                             │");
+            Console.WriteLine(offset + "└─────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(2500);
+            Files(newPath);
+        }
+        catch
+        {
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 18; i++)
+            {
+                offset += " ";
+            }
+            Console.Clear();
+            Console.SetCursorPosition(0, 10);
+            Console.ForegroundColor = badColor;
+            Console.WriteLine(offset + "┌──────────────────────────────────┐");
+            Console.WriteLine(offset + "│  Не удалось переместить файл :(  │");
+            Console.WriteLine(offset + "│     Возможно, дело в доступе     │");
+            Console.WriteLine(offset + "│       к папке или к файлу        │");
+            Console.WriteLine(offset + "└──────────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(3500);
+            FileActions(path);
+        }
+    }
+    /// <summary>
+    /// Предупреждает пользователя о возможности потерять старый файл
+    /// </summary>
+    /// <param name="path">Файлик, предназначенный для перемещения</param>
+    static void MoveFileWarning(string path)
+    {
+        Console.Clear();
+        string offset = "";
+        for (int i = 0; i < Console.WindowWidth / 2 - 25; i++)
+        {
+            offset += " ";
+        }
+        Console.ForegroundColor = color1;
+        Console.SetCursorPosition(0, 10);
+        Console.WriteLine(offset + "┌────────────────────────────────────────────────┐");
+        Console.WriteLine(offset + "│    Вы уверены, что хотите переместить файл?    │");
+        Console.WriteLine(offset + "│  Если в выбранной папке будет файл с таким же  │");
+        Console.WriteLine(offset + "│        названием, он будет перезаписан.        │");
+        Console.WriteLine(offset + "│                                                │");
+        Console.WriteLine(offset + "│        Тогда ненадо...           Поiхали       │");
+        Console.WriteLine(offset + "│          Backspace                Enter        │");
+        Console.WriteLine(offset + "└────────────────────────────────────────────────┘");
+        Console.SetCursorPosition(0, 0);
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.Enter:
+                    ChoosingFolderToMove(Directory.GetParent(path).FullName, path);
+                    break;
+                case ConsoleKey.Backspace:
+                    FileActions(path);
+                    break;
+            }
+            Console.SetCursorPosition(0, 0);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, 0);
+        }
+    }
+    /// <summary>
+    /// Действует почти как Files(string), только надо выбрать папку, а не файл. 
+    /// </summary>
+    /// <param name="folder">Текущая директория</param>
+    /// <param name="file">Файл для перемещения</param>
+    static void ChoosingFolderToMove(string folder, string file)
+    {
+        Console.Clear();
+        Console.ForegroundColor = color2;
+        string title = "Выберите папку для перемещения файла. Определившись, нажмите пробел.";
+        Console.SetCursorPosition(Console.WindowWidth / 2 - title.Length / 2, 0);
+        Console.WriteLine(title);
+        var di = new DirectoryInfo(folder);
+        var items = di.GetFileSystemInfos()
+            .Where(f => !f.Name.StartsWith("."))
+            .Where(f => !f.IsHidden())
+            .OrderBy(f => f.Name)
+            .ToList();
+
+        int cursor = 0;
+        Console.SetCursorPosition(0, 0);
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(" [<<]");
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            WriteColored(items[i]);
+        }
+        Console.SetCursorPosition(0, 0);
+
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.DownArrow:
+                    if (items.Count > 0)
+                    {
+                        if (cursor == 0)
+                        {
+                            Console.SetCursorPosition(0, cursor);
+                            Console.ForegroundColor = color2;
+                            Console.WriteLine(" [<<]");
+                            cursor += 1;
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(" {0}", showDir ? items[cursor - 1].FullName : items[cursor - 1].Name);
+                        }
+                        else if (cursor < items.Count)
+                        {
+                            Console.SetCursorPosition(0, cursor);
+                            WriteColored(items[cursor - 1]);
+                            cursor += 1;
+                            Console.SetCursorPosition(0, cursor);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(" {0}", showDir ? items[cursor - 1].FullName : items[cursor - 1].Name);
+                        }
+                    }
+                    break;
+                case ConsoleKey.UpArrow:
+                    if (items.Count > 0)
+                    {
+                        if (cursor == 1)
+                        {
+                            Console.SetCursorPosition(0, cursor);
+                            WriteColored(items[cursor - 1]);
+                            cursor = 0;
+                            Console.SetCursorPosition(0, cursor);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(" [<<]");
+                        }
+                        else if (cursor > 0)
+                        {
+                            Console.SetCursorPosition(0, cursor);
+                            WriteColored(items[cursor - 1]);
+                            cursor -= 1;
+                            Console.SetCursorPosition(0, cursor);
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(" {0}", showDir ? items[cursor - 1].FullName : items[cursor - 1].Name);
+                        }
+                    }
+                    break;
+                case ConsoleKey.Enter:
+                    if (cursor == 0)
+                    {
+                        count -= 1;
+                        if (count == 0)
+                        {
+                            ChoosingDiskToMove(file);
+                        }
+                        else
+                        {
+                            ChoosingFolderToMove(Directory.GetParent(folder).FullName, file);
+                        }
+                    }
+                    else
+                    {
+                        if (items[cursor - 1].IsDirectory())
+                        {
+                            count += 1;
+                            ChoosingFolderToMove(items[cursor - 1].FullName, file);
+                        }
+                    }
+                    break;
+                case ConsoleKey.Spacebar:
+                    if (items.Count > 0)
+                    {
+                        if (items[cursor - 1].IsDirectory())
+                        {
+                            MoveFile(file, items[cursor - 1].FullName);
+                        }
+                    }
+
+                    break;
+                case ConsoleKey.Tab:
+                    showDir = !showDir;
+                    ChoosingFolderToMove(folder, file);
+                    break;
+                case ConsoleKey.Escape:
+                    if (QuitWarning())
+                    {
+                        Quit();
+                    }
+                    else
+                    {
+                        ChoosingFolderToMove(folder, file);
+                    }
+                    break;
+                
+            }
+            Console.SetCursorPosition(0, cursor);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, cursor);
+        }
+    }
+    /// <summary>
+    /// Действует как Disks()
+    /// </summary>
+    /// <param name="file">Файл для перемещения</param>
+    static void ChoosingDiskToMove(string file)
+    {
+        Console.Clear();
+        Console.SetCursorPosition(0, 0);
+        DriveInfo[] allDrives = DriveInfo.GetDrives();
+        Console.ForegroundColor = color2;
+        string hint = "Выберите диск.";
+        Console.SetCursorPosition(Console.WindowWidth / 2 - hint.Length / 2, 0);
+        Console.WriteLine(hint);
+
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(" " + allDrives[0]);
+        Console.ForegroundColor = color1;
+        for (int i = 1; i < allDrives.Length; i++)
+        {
+            Console.WriteLine(" " + allDrives[i].Name);
+        }
+        int diskNumber = 1;
+        Console.SetCursorPosition(0, diskNumber);
+
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.DownArrow:
+                    if (diskNumber < allDrives.Length)
+                    {
+                        Console.SetCursorPosition(0, diskNumber);
+                        Console.ForegroundColor = color1;
+                        Console.WriteLine(" " + allDrives[diskNumber - 1].Name);
+                        diskNumber += 1;
+                        Console.SetCursorPosition(0, diskNumber);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(" " + allDrives[diskNumber - 1].Name);
+                    }
+                    break;
+                case ConsoleKey.UpArrow:
+                    if (diskNumber > 1)
+                    {
+                        Console.SetCursorPosition(0, diskNumber);
+                        Console.ForegroundColor = color1;
+                        Console.WriteLine(" " + allDrives[diskNumber - 1].Name);
+                        diskNumber -= 1;
+                        Console.SetCursorPosition(0, diskNumber);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(" " + allDrives[diskNumber - 1].Name);
+                    }
+                    break;
+                case ConsoleKey.Enter:
+                    count += 1;
+                    Console.ForegroundColor = color1;
+                    ChoosingFolderToMove(allDrives[diskNumber - 1].Name, file);
+                    break;
+                case ConsoleKey.Escape:
+                    if (QuitWarning())
+                    {
+                        Quit();
+                    }
+                    else
+                    {
+                        ChoosingDiskToMove(file);
+                    }
+                    break;
+            }
+            Console.SetCursorPosition(0, diskNumber);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, diskNumber);
+        }
+    }
+    /// <summary>
+    /// Убеждается, что юзер хочет удалить файл
+    /// </summary>
+    /// <param name="path">Выбранный файл</param>
+    static void DeleteFileWarning(string path)
+    {
+        Console.Clear();
+        string offset = "";
+        for (int i = 0; i < Console.WindowWidth / 2 - 21; i++)
+        {
+            offset += " ";
+        }
+        Console.ForegroundColor = color1;
+        Console.SetCursorPosition(0, 10);
+        Console.WriteLine(offset + "┌────────────────────────────────────────┐");
+        Console.WriteLine(offset + "│  Вы уверены, что хотите удалить файл?  │");
+        Console.WriteLine(offset + "│                                        │");
+        Console.WriteLine(offset + "│     Я передумал...         Конечно!    │");
+        Console.WriteLine(offset + "│       Backspace             Enter      │");
+        Console.WriteLine(offset + "└────────────────────────────────────────┘");
+        Console.SetCursorPosition(0, 0);
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.Enter:
+                    DeleteFile(path);
+                    break;
+                case ConsoleKey.Backspace:
+                    FileActions(path);
+                    break;
+            }
+            Console.SetCursorPosition(0, 0);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, 0);
+        }
+    }
+    /// <summary>
+    /// Удаление........
+    /// </summary>
+    /// <param name="path">Файл, бедный файл. Его больше никогда не будет с нами.</param>
+    static void DeleteFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 14; i++)
+            {
+                offset += " ";
+            }
+            Console.Clear();
+            Console.SetCursorPosition(0, 10);
+            Console.ForegroundColor = goodColor;
+            Console.WriteLine(offset + "┌──────────────────────────┐");
+            Console.WriteLine(offset + "│                          │");
+            Console.WriteLine(offset + "│  Файл успешно удалён :)  │");
+            Console.WriteLine(offset + "│                          │");
+            Console.WriteLine(offset + "└──────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(2500);
+            Files(Directory.GetParent(path).FullName);
+        }
+        catch
+        {
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 16; i++)
+            {
+                offset += " ";
+            }
+            Console.Clear();
+            Console.SetCursorPosition(0, 10);
+            Console.ForegroundColor = badColor;
+            Console.WriteLine(offset + "┌──────────────────────────────┐");
+            Console.WriteLine(offset + "│  Не удалось удалить файл :(  │");
+            Console.WriteLine(offset + "│   Возможно, дело в доступе   │");
+            Console.WriteLine(offset + "│        к этому файлу         │");
+            Console.WriteLine(offset + "└──────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(3500);
+            FileActions(path);
+        }
+    }
+    /// <summary>
+    /// Переименование файла. Вообще, эта функция включена в программу для более комфортной конкатенации файликов.
+    /// </summary>
+    /// <param name="path">Выбранный файл</param>
+    static void RenameFile(string path)
+    {
+        Console.Clear();
+        Console.ForegroundColor = color2;
+        string title = "Переименование файла \"" + Path.GetFileName(path) + "\"";
+        Console.SetCursorPosition(Console.WindowWidth / 2 - title.Length / 2, 0);
+        Console.WriteLine(title);
+        Console.WriteLine();
+        Console.ForegroundColor = color1;
+        Console.WriteLine("Новое название: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        string newName = Console.ReadLine();
+
+        try
+        {
+            File.Copy(path, path.Replace(Path.GetFileName(path), newName + Path.GetExtension(path)));
+            File.Delete(path);
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 17; i++)
+            {
+                offset += " ";
+            }
+            Console.Clear();
+            Console.SetCursorPosition(0, 10);
+            Console.ForegroundColor = goodColor;
+            Console.WriteLine(offset + "┌────────────────────────────────┐");
+            Console.WriteLine(offset + "│                                │");
+            Console.WriteLine(offset + "│  Файл успешно переименован :)  │");
+            Console.WriteLine(offset + "│                                │");
+            Console.WriteLine(offset + "└────────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(2500);
+            Files(Directory.GetParent(path).FullName);
+        }
+        catch
+        {
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 19; i++)
+            {
+                offset += " ";
+            }
+            Console.Clear();
+            Console.SetCursorPosition(0, 10);
+            Console.ForegroundColor = badColor;
+            Console.WriteLine(offset + "┌────────────────────────────────────┐");
+            Console.WriteLine(offset + "│  Не удалось переименовать файл :(  │");
+            Console.WriteLine(offset + "│      Возможно, дело в доступе      │");
+            Console.WriteLine(offset + "│       к папке с этим файлом        │");
+            Console.WriteLine(offset + "└────────────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(3500);
+            FileActions(path);
+        }
+    }
+    /// <summary>
+    /// Вывод содержимого файла в консоль в указанной кодировке
+    /// </summary>
+    /// <param name="path">Путь к файлу</param>
+    /// <param name="encod">Кодировка</param>
+    static void FileOutput(string path, string encod)
+    {
+        using (StreamReader stream = new(path, Encoding.GetEncoding(encod)))
+        {
+            string text = stream.ReadToEnd();
+            stream.Close();
+            Console.Clear();
+            string title = "Содержимое файла \"" + Path.GetFileName(path) + "\" в кодировке " + encod;
+            Console.SetCursorPosition(Console.WindowWidth / 2 - title.Length / 2, 0);
+            Console.ForegroundColor = color2;
+            Console.WriteLine(title);
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write(text);
+        }
+        Console.WriteLine();
+        Console.WriteLine();
+        Console.ForegroundColor = color1;
+        Console.Write("Это всё. Нажмите Enter, чтобы закрыть.");
+        (int x, int y) = Console.GetCursorPosition();
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.Enter:
+                    Files(Directory.GetParent(path).FullName);
+                    break;
+            }
+            Console.SetCursorPosition(x, y);
+            Console.Write(" ");
+            Console.SetCursorPosition(x, y);
+        }
+    }
+    /// <summary>
+    /// Выбор кодировки для вывода или создания файла
+    /// </summary>
+    /// <param name="path">Путь к папке, если файл создаётся, или к файлу, если читается</param>
+    /// <param name="type">Может принимать значения "read" и "create" и указывает на то, создаём мы файл или читаем.</param>
+    static void ChooseEncoding(string path, string type)
+    {
+        if (type == "create")
+        {
+            try
+            {
+                // Попробовали создать файл, чтобы проверить, что в этой папке это разрешено. Тут же удалили, конечно.
+                File.Create(path + "\\new.txt").Close();
+                File.Delete(path + "\\new.txt");
+            }
+            catch
+            {
+                string offset = "";
+                for (int i = 0; i < Console.WindowWidth / 2 - 20; i++)
+                {
+                    offset += " ";
+                }
+                Console.Clear();
+                Console.ForegroundColor = badColor;
+                Console.SetCursorPosition(0, 10);
+                Console.WriteLine(offset + "┌───────────────────────────────────────┐");
+                Console.WriteLine(offset + "│                                       │");
+                Console.WriteLine(offset + "│  В этой папке нельзя создать файл :(  │");
+                Console.WriteLine(offset + "│                                       │");
+                Console.WriteLine(offset + "└───────────────────────────────────────┘");
+                Console.SetCursorPosition(0, 0);
+                Thread.Sleep(3500);
+                Files(path);
+            }
+        }
+        Console.Clear();
+        string title = "Выберите кодировку.";
+        Console.SetCursorPosition(Console.WindowWidth / 2 - title.Length / 2, 0);
+        Console.ForegroundColor = color2;
+        Console.WriteLine(title);
+
+        string[] encods = { "[<<]", "UTF-8", "Unicode", "ASCII", "Latin1" };
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(" " + encods[0]);
+        Console.ForegroundColor = color1;
+        for (int i = 1; i < encods.Length; i++)
+        {
+            Console.WriteLine(" " + encods[i]);
+        }
+        int cursor = 0;
+        Console.SetCursorPosition(0, cursor + 1);
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.DownArrow:
+                    if (cursor < encods.Length - 1)
+                    {
+                        Console.SetCursorPosition(0, cursor + 1);
+                        if (cursor == 0)
+                        {
+                            Console.ForegroundColor = color2;
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = color1;
+                        }
+                        Console.WriteLine(" " + encods[cursor]);
+                        cursor += 1;
+                        Console.SetCursorPosition(0, cursor + 1);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(" " + encods[cursor]);
+                    }
+                    break;
+                case ConsoleKey.UpArrow:
+                    if (cursor > 0)
+                    {
+                        Console.SetCursorPosition(0, cursor + 1);
+                        Console.ForegroundColor = color1;
+                        Console.WriteLine(" " + encods[cursor]);
+                        cursor -= 1;
+                        Console.SetCursorPosition(0, cursor + 1);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(" " + encods[cursor]);
+                    }
+                    break;
+                case ConsoleKey.Enter:
+                    if (cursor == 0)
+                    {
+                        if (type == "read")
+                        {
+                            FileActions(path);
+                        }
+                        else
+                        {
+                            Files(path);
+                        }
+                    }
+                    else
+                    {
+                        if (type == "read")
+                        {
+                            FileOutput(path, encods[cursor]);
+                        }
+                        else
+                        {
+                            FileCreate(path, encods[cursor]);
+                        }
+                    }
+                    break;
+            }
+            Console.SetCursorPosition(0, cursor + 1);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, cursor + 1);
+        }
+    }
+
+    /// <summary>
+    /// Знакомим человека с правилами конкатенации в нашем приложении
+    /// </summary>
+    /// <param name="path">Выбранный файл</param>
+    static void FilesUniteWarning(string path)
+    {
+        Console.Clear();
+        string title = "Объединение текстовых файлов в один";
+        Console.SetCursorPosition(Console.WindowWidth / 2 - title.Length / 2, 0);
+        Console.ForegroundColor = color2;
+        Console.WriteLine(title);
+        Console.ForegroundColor = color1;
+        Console.WriteLine();
+        Console.WriteLine("Конкатенировать можно только файлы с разрешением *.txt.");
+        Console.WriteLine("Схема простая: поместите все желаемые для объединения файлы в одну папку. ");
+        Console.WriteLine("Далее выберите любой из них и нажмите на конкатенацию.");
+        Console.WriteLine("Файлы будут объединены в алфавитном порядке(сначала русский) и записаны в первый по счёту файл.");
+        Console.WriteLine();
+        Console.ForegroundColor = color2;
+        Console.WriteLine("   ┌─────────────────────┐      ┌────────────────────────────────┐");
+        Console.WriteLine("   │   Я пока не готов   │      │   Файлы готовы к конкатенации  │");
+        Console.WriteLine("   │      Backspace      │      │              Enter             │");
+        Console.WriteLine("   └─────────────────────┘      └────────────────────────────────┘");
+        Console.SetCursorPosition(0, 0);
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.Backspace:
+                    Files(Directory.GetParent(path).FullName);
+                    break;
+                case ConsoleKey.Enter:
+                    FilesUnite(Directory.GetParent(path).FullName);
+                    break;
+            }
+            Console.SetCursorPosition(0, 0);
+            Console.Write(" ");
+            Console.SetCursorPosition(0, 0);
+        }
+    }
+    /// <summary>
+    /// Конкатенирует все *.txt файлы в выбранной папке
+    /// </summary>
+    /// <param name="folder">Выбранная папка</param>
+    static void FilesUnite(string folder)
+    {
+        try
+        {
+            var di = new DirectoryInfo(folder);
+            var items = di.GetFiles()
+                .Where(f => f.Extension == ".txt")
+                .Where(f => !f.IsHidden())
+                .OrderBy(f => f.Name)
+                .ToList();
+            using (StreamWriter sw = new StreamWriter(items[0].FullName, true))
+            {
+                sw.Write("\n");
+                for (int i = 1; i < items.Count; i++)
+                {
+                    using (StreamReader sr = new StreamReader(items[i].FullName))
+                    {
+                        string text = sr.ReadToEnd();
+                        sr.Close();
+                        sw.Write(text);
+                        sw.Write("\n");
+                    }
+                }
+                sw.Close();
+            }
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 17; i++)
+            {
+                offset += " ";
+            }
+            Console.Clear();
+            Console.ForegroundColor = goodColor;
+            Console.SetCursorPosition(0, 10);
+            Console.WriteLine(offset + "┌─────────────────────────────────┐");
+            Console.WriteLine(offset + "│                                 │");
+            Console.WriteLine(offset + "│  Файлики успешно объединены :)  │");
+            Console.WriteLine(offset + "│                                 │");
+            Console.WriteLine(offset + "└─────────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(2500);
+            Files(folder);
+        }
+        catch
+        {
+            string offset = "";
+            for (int i = 0; i < Console.WindowWidth / 2 - 18; i++)
+            {
+                offset += " ";
+            }
+            Console.Clear();
+            Console.ForegroundColor = badColor;
+            Console.SetCursorPosition(0, 10);
+            Console.WriteLine(offset + "┌──────────────────────────────────┐");
+            Console.WriteLine(offset + "│  Не удалось объединить файлы :(  │");
+            Console.WriteLine(offset + "│  Наверное, из-за доступа к ним   │");
+            Console.WriteLine(offset + "│     или из-за их расширения      │");
+            Console.WriteLine(offset + "└──────────────────────────────────┘");
+            Console.SetCursorPosition(0, 0);
+            Thread.Sleep(3500);
+            Files(folder);
+        }
+    }
+
+    /// <summary>
+    /// Вывод всех файлов в директории с таким же расширением, как и у выбранного файла
+    /// </summary>
+    /// <param name="file">Выбранный файл</param>
+    static void SameExOutput(string file)
+    {
+        Console.Clear();
+        string title = "Файлы папки \"" + Directory.GetParent(file).Name + "\" с расширением *" + Path.GetExtension(file);
+        Console.SetCursorPosition(Console.WindowWidth / 2 - title.Length / 2, 0);
+        Console.ForegroundColor = color2;
+        Console.WriteLine(title);
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine();
+
+        string folder = Directory.GetParent(file).FullName;
+        var di = new DirectoryInfo(folder);
+        var items = di.GetFiles()
+            .Where(f => f.Extension == Path.GetExtension(file))
+            .Where(f => !f.IsHidden())
+            .OrderBy(f => f.Name)
+            .ToList();
+        for (int i = 0; i < items.Count; i++)
+        {
+            Console.WriteLine((i+1).ToString() + ". " + items[i].Name);
+        }
+
+        Console.ForegroundColor = color1;
+        Console.WriteLine();
+        Console.Write("Это всё. Нажмите Enter, чтобы закрыть.");
+        (int x, int y) = Console.GetCursorPosition();
+        while (true)
+        {
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.Enter:
+                    Files(folder);
+                    break;
+                case ConsoleKey.Escape:
+                    if (QuitWarning())
+                    {
+                        Quit();
+                    }
+                    else
+                    {
+                        SameExOutput(file);
+                    }
+                    break;
+            }
+            Console.SetCursorPosition(x, y);
+            Console.Write(" ");
+            Console.SetCursorPosition(x, y);
+        }
+    }
+}
